@@ -11,7 +11,7 @@ function pad(num,n) {
   num = num.toString();
   return Array(n>num.length?(n-(''+num).length+1):0).join(0)+num;  
 }
-for (var i = 1; i < 999; i++) {
+for (var i = 1; i < 99; i++) {
   getStock(pad(i,6));
 };
 var num = 0;
