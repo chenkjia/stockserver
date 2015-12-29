@@ -35,6 +35,8 @@ function getStock (code) {
         console.log(num);
         return false;
       }
+    }else{
+      getStock(code);
     }
   });
 }
