@@ -33,7 +33,7 @@ function getStock (code) {
           get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/'+i+'.js',function(body) {
             Stock.findOneAndUpdate({code:code},{$pushAll:{history:
             saveHistory(body)}},function(err,doc){
-              console.log(doc);
+              console.log('success,'+'code:'+code+'year:'+i);
             });
           });
         }
