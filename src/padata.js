@@ -31,7 +31,10 @@ function getStock (code) {
       get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/last.js',function(body) {
         for (var i = getStartYear(body); i <= 2015; i++) {
           get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/'+i+'.js',function(body) {
-            saveHistory(code,body);
+            Stock.findOneAndUpdate({code:code},{$pushAll:{history:
+            saveHistory(body)}},function(err,doc){
+              console.log(doc);
+            });
           });
         }
       });
@@ -63,17 +66,13 @@ function saveStock(data) {
 function getStartYear(data) {
   return data.replace(/^.*(?=\{.*)/,'').substr(2, 4);
 }
-function saveHistory(code,data) {
+function saveHistory(data) {
   var history = data.replace(/^(.*(?=\"\:\"))|(\"\:\")|(\"\}\)$)/g,'').split(';');
   var historyData = [];
   for (var i = 0; i < history.length; i++) {
-    console.log(analysisHistory(history[i]));
-    Stock.findOneAndUpdate({code:code},{$push:{history:analysisHistory(history[i])}},function(err,doc){
-      console.log(doc);
-    });
-    // historyData.push(analysisHistory(data[i]));
+    historyData.push(analysisHistory(history[i]));
   }
-  // return historyData;
+  return historyData;
 }
 function analysisHistory(data) {
   var item = data.split(',');
