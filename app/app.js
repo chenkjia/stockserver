@@ -11,6 +11,7 @@ const logger = require('koa-logger');
 
 const index = require('./routes/index');
 const users = require('./routes/users');
+const stocks = require('./routes/stocks');
 
 // middlewares
 app.use(convert(bodyparser));
@@ -39,6 +40,7 @@ app.use(co.wrap(function* (ctx, next) {
 
 router.use('/', index.routes(), index.allowedMethods());
 router.use('/users', users.routes(), users.allowedMethods());
+router.use('/stocks', stocks.routes(), stocks.allowedMethods());
 
 app.use(router.routes(), router.allowedMethods());
 // response

@@ -23,28 +23,27 @@ var stockSchema = new Schema({
 });
 
 var Stock = mongoose.model('Stock', stockSchema);
-for (var i = 0; i < 100; i++) {
-  getStock(i);
-};
 
-function pad(num,n) {
+getStock(3);
+
+function pad(num, n) {
   num = num.toString();
-  return Array(n>num.length?(n-(''+num).length+1):0).join(0)+num;  
+  return Array(n > num.length ? n - ('' + num).length + 1 : 0).join(0) + num;
 }
 
-function getStock (num) {
-  var code = pad(num,6);
+function getStock(num) {
+  var code = pad(num, 6);
   num++;
   console.log(code);
-  get('http://stockpage.10jqka.com.cn/'+code,function(body) {
+  get('http://stockpage.10jqka.com.cn/' + code, function (body) {
     var stock = saveStock(body);
-    if(stock){
-      get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/last.js',function(body) {
+    if (stock) {
+      get('http://d.10jqka.com.cn/v2/line/hs_' + code + '/01/last.js', function (body) {
         var ep = new EventProxy();
         var startYear = Number(getStartYear(body));
         var lastYear = Number(getLastYear(body));
-        ep.after('got_history', lastYear-startYear+1, function (list) {
-          stock['history'] = saveHistory(list)
+        ep.after('got_history', lastYear - startYear + 1, function (list) {
+          stock['history'] = saveHistory(list);
           var stockObject = new Stock(stock);
           stockObject.save(function (err) {
             console.log(num);
@@ -52,7 +51,7 @@ function getStock (num) {
           });
         });
         for (var i = startYear; i <= lastYear; i++) {
-          get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/'+i+'.js',function(body) {
+          get('http://d.10jqka.com.cn/v2/line/hs_' + code + '/01/' + i + '.js', function (body) {
             ep.emit('got_history', body);
           });
         }
@@ -63,37 +62,37 @@ function getStock (num) {
     }
   });
 }
-function get(url,callback){
+function get(url, callback) {
   request(url, function (error, response, body) {
     if (!error && response.statusCode == 200) {
       callback(body);
     } else {
-      get(url,callback);
+      get(url, callback);
     }
   });
 }
 function saveStock(data) {
-    var $ = cheerio.load(data);
-    var stock = {};
-    stock['label'] = $('h1 a:first-child strong').text().replace(/(^\s*)|(\s*$)/g,'');
-    stock['code'] = $('h1 a:first-child').text().replace(/(\s*)/g,'').replace(stock['label'],'');
-    if (stock['label']!==''&&stock['code']!==''){
-      return stock;
-    } else {
-      return false;
-    }
+  var $ = cheerio.load(data);
+  var stock = {};
+  stock['label'] = $('h1 a:first-child strong').text().replace(/(^\s*)|(\s*$)/g, '');
+  stock['code'] = $('h1 a:first-child').text().replace(/(\s*)/g, '').replace(stock['label'], '');
+  if (stock['label'] !== '' && stock['code'] !== '') {
+    return stock;
+  } else {
+    return false;
+  }
 }
 function getStartYear(data) {
-  return data.replace(/^.*(?=\{.*)/,'').substr(2, 4);
+  return data.replace(/^.*(?=\{.*)/, '').substr(2, 4);
 }
 function getLastYear(data) {
-  var tmp = data.substring(0,data.indexOf(',"start"'));
-  return tmp.substring(tmp.lastIndexOf('":')-4,tmp.lastIndexOf('":'));
+  var tmp = data.substring(0, data.indexOf(',"start"'));
+  return tmp.substring(tmp.lastIndexOf('":') - 4, tmp.lastIndexOf('":'));
 }
 function saveHistory(list) {
   var historyData = [];
   for (var j = 0; j < list.length; j++) {
-    var history = list[j].replace(/^(.*(?=\"\:\"))|(\"\:\")|(\"\}\)$)/g,'').split(';');
+    var history = list[j].replace(/^(.*(?=\"\:\"))|(\"\:\")|(\"\}\)$)/g, '').split(';');
     for (var i = 0; i < history.length; i++) {
       historyData.push(analysisHistory(history[i]));
     }
@@ -110,5 +109,5 @@ function analysisHistory(data) {
   stockitem['close'] = Number(item[4]);
   stockitem['volume'] = Number(item[5]);
   stockitem['amount'] = Number(item[6]);
-  return stockitem
+  return stockitem;
 }

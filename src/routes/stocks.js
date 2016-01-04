@@ -1,10 +1,10 @@
+var router = require('koa-router')();
 var request = require('request');
 var cheerio = require('cheerio');
 var EventProxy = require('eventproxy');
 var mongoose = require('mongoose');
 mongoose.connect('mongodb://localhost/stock');
 var Schema = mongoose.Schema;
-
 var historySchema = new Schema({
   date: Number,
   open: Number,
@@ -23,18 +23,13 @@ var stockSchema = new Schema({
 });
 
 var Stock = mongoose.model('Stock', stockSchema);
-for (var i = 0; i < 100; i++) {
-  getStock(i);
-};
 
-function pad(num,n) {
-  num = num.toString();
-  return Array(n>num.length?(n-(''+num).length+1):0).join(0)+num;  
-}
+router.get('/:code', function (ctx, next) {
+  getStock(ctx.params.code);
+  ctx.body=ctx.params.code;
+});
 
-function getStock (num) {
-  var code = pad(num,6);
-  num++;
+function getStock (code) {
   console.log(code);
   get('http://stockpage.10jqka.com.cn/'+code,function(body) {
     var stock = saveStock(body);
@@ -44,22 +39,22 @@ function getStock (num) {
         var startYear = Number(getStartYear(body));
         var lastYear = Number(getLastYear(body));
         ep.after('got_history', lastYear-startYear+1, function (list) {
+          console.log(code);
           stock['history'] = saveHistory(list)
           var stockObject = new Stock(stock);
           stockObject.save(function (err) {
-            console.log(num);
-            getStock(num);
+            if (err) {
+              console.log(err);
+            };
           });
         });
         for (var i = startYear; i <= lastYear; i++) {
+          console.log(i);
           get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/'+i+'.js',function(body) {
             ep.emit('got_history', body);
           });
         }
       });
-    } else {
-      console.log(true);
-      getStock(num);
     }
   });
 }
@@ -112,3 +107,5 @@ function analysisHistory(data) {
   stockitem['amount'] = Number(item[6]);
   return stockitem
 }
+
+module.exports = router;

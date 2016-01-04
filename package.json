@@ -11,6 +11,7 @@
     "cheerio": "^0.19.0",
     "co": "^4.6.0",
     "debug": "^2.2.0",
+    "eventproxy": "^0.3.4",
     "jade": "~1.11.0",
     "koa": "^2.0.0-alpha.3",
     "koa-bodyparser": "^2.0.1",
