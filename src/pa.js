@@ -32,7 +32,7 @@ function batchGetStock (n) {
       Stock.create(list,function (err) {
         console.log(list);
         console.log(list.length);
-        if(n>100){
+        if(n<100){
           batchGetStock(n+1);
         }
       });
