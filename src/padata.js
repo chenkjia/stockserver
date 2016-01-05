@@ -2,7 +2,7 @@ var request = require('request');
 var cheerio = require('cheerio');
 var EventProxy = require('eventproxy');
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/stock');
+mongoose.connect('mongodb://localhost/stockdemo');
 var Schema = mongoose.Schema;
 
 var historySchema = new Schema({
@@ -23,9 +23,8 @@ var stockSchema = new Schema({
 });
 
 var Stock = mongoose.model('Stock', stockSchema);
-for (var i = 0; i < 100; i++) {
-  getStock(i);
-};
+
+getStock(1);
 
 function pad(num,n) {
   num = num.toString();
@@ -34,11 +33,14 @@ function pad(num,n) {
 
 function getStock (num) {
   var code = pad(num,6);
-  num++;
   console.log(code);
   get('http://stockpage.10jqka.com.cn/'+code,function(body) {
     var stock = saveStock(body);
     if(stock){
+      var stockObject = new Stock(stock);
+      stockObject.save(function (err) {
+        console.log(code);
+      });
       get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/last.js',function(body) {
         var ep = new EventProxy();
         var startYear = Number(getStartYear(body));
@@ -47,8 +49,7 @@ function getStock (num) {
           stock['history'] = saveHistory(list)
           var stockObject = new Stock(stock);
           stockObject.save(function (err) {
-            console.log(num);
-            getStock(num);
+            console.log(code);
           });
         });
         for (var i = startYear; i <= lastYear; i++) {
@@ -57,9 +58,6 @@ function getStock (num) {
           });
         }
       });
-    } else {
-      console.log(true);
-      getStock(num);
     }
   });
 }
