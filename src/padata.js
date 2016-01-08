@@ -2,7 +2,9 @@ var request = require('request');
 var cheerio = require('cheerio');
 var EventProxy = require('eventproxy');
 var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost/stockdemo');
+var _ = require('lodash');
+
+mongoose.connect('mongodb://localhost/stockdemos');
 var Schema = mongoose.Schema;
 
 var historySchema = new Schema({
@@ -19,47 +21,50 @@ var historySchema = new Schema({
 var stockSchema = new Schema({
   label: String,
   code: String,
+  firstYear: Number,
+  lastYear: Number,
   history: [historySchema]
 });
 
 var Stock = mongoose.model('Stock', stockSchema);
-
-getStock(1);
-
+getStockHistorys(5);
+function getStockHistorys(n) {
+  getStockList(function(docs){
+    getStockHistory(n,docs);
+  })
+}
+function getStockHistory(n,docs){
+  if(n<docs.length){
+    getStock(docs[n].code,docs[n].firstYear,docs[n].lastYear,function() {
+      getStockHistory(n+1,docs);
+    })
+  }
+}
+function getStockList(callback){
+  var stocklist = []
+  return Stock.find({history:[]},function(err,docs) {
+    callback(docs);
+  });
+}
 function pad(num,n) {
   num = num.toString();
   return Array(n>num.length?(n-(''+num).length+1):0).join(0)+num;  
 }
 
-function getStock (num) {
-  var code = pad(num,6);
-  console.log(code);
-  get('http://stockpage.10jqka.com.cn/'+code,function(body) {
-    var stock = saveStock(body);
-    if(stock){
-      var stockObject = new Stock(stock);
-      stockObject.save(function (err) {
-        console.log(code);
-      });
-      get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/last.js',function(body) {
-        var ep = new EventProxy();
-        var startYear = Number(getStartYear(body));
-        var lastYear = Number(getLastYear(body));
-        ep.after('got_history', lastYear-startYear+1, function (list) {
-          stock['history'] = saveHistory(list)
-          var stockObject = new Stock(stock);
-          stockObject.save(function (err) {
-            console.log(code);
-          });
-        });
-        for (var i = startYear; i <= lastYear; i++) {
-          get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/'+i+'.js',function(body) {
-            ep.emit('got_history', body);
-          });
-        }
-      });
-    }
+function getStock (code,startYear,lastYear,callback) {
+  var ep = new EventProxy();
+  ep.after('got_history', lastYear-startYear+1, function (list) {
+    var history = _.sortBy(saveHistory(list),'date');
+    Stock.findOneAndUpdate({code:code},{$pushAll:{history:history}},function(err,doc){
+      console.log(code);
+      callback();
+    });
   });
+  for (var i = startYear; i <= lastYear; i++) {
+    get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/'+i+'.js',function(body) {
+      ep.emit('got_history', body);
+    });
+  }
 }
 function get(url,callback){
   request(url, function (error, response, body) {
@@ -85,7 +90,7 @@ function getStartYear(data) {
   return data.replace(/^.*(?=\{.*)/,'').substr(2, 4);
 }
 function getLastYear(data) {
-  var tmp = data.substring(0,data.indexOf(',"start"'));
+  var tmp = data.substring(0,data.lastIndexOf('},"'));
   return tmp.substring(tmp.lastIndexOf('":')-4,tmp.lastIndexOf('":'));
 }
 function saveHistory(list) {

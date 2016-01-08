@@ -4,7 +4,7 @@ var EventProxy = require('eventproxy');
 var mongoose = require('mongoose');
 var _ = require('lodash');
 
-mongoose.connect('mongodb://localhost/stockdemo');
+mongoose.connect('mongodb://localhost/stockdemos');
 var Schema = mongoose.Schema;
 
 var historySchema = new Schema({
@@ -21,6 +21,8 @@ var historySchema = new Schema({
 var stockSchema = new Schema({
   label: String,
   code: { type: String, unique: true},
+  firstYear: Number,
+  lastYear: Number,
   history: [historySchema]
 });
 
@@ -57,8 +59,8 @@ function pad(num,n) {
 }
 function getStock (num,callback) {
   var code = pad(num,6);
-  get('http://stockpage.10jqka.com.cn/'+code,function(body) {
-    callback(saveStock(body));
+  get('http://d.10jqka.com.cn/v2/line/hs_'+code+'/01/last.js',function(body) {
+    callback(saveStock(code,body));
   });
 }
 function get(url,callback){
@@ -66,47 +68,20 @@ function get(url,callback){
     if (!error && response.statusCode == 200) {
       callback(body);
     } else {
-      get(url,callback);
+      callback(false);
     }
   });
 }
-function saveStock(data) {
-    var $ = cheerio.load(data);
+function saveStock(code,data) {
+  if(data){
     var stock = {};
-    stock['label'] = $('h1 a:first-child strong').text().replace(/(^\s*)|(\s*$)/g,'');
-    stock['code'] = $('h1 a:first-child').text().replace(/(\s*)/g,'').replace(stock['label'],'');
-    if (stock['label']!==''&&stock['code']!==''){
-      return stock;
-    } else {
-      return false;
-    }
-}
-function getStartYear(data) {
-  return data.replace(/^.*(?=\{.*)/,'').substr(2, 4);
-}
-function getLastYear(data) {
-  var tmp = data.substring(0,data.indexOf(',"start"'));
-  return tmp.substring(tmp.lastIndexOf('":')-4,tmp.lastIndexOf('":'));
-}
-function saveHistory(list) {
-  var historyData = [];
-  for (var j = 0; j < list.length; j++) {
-    var history = list[j].replace(/^(.*(?=\"\:\"))|(\"\:\")|(\"\}\)$)/g,'').split(';');
-    for (var i = 0; i < history.length; i++) {
-      historyData.push(analysisHistory(history[i]));
-    }
-  };
-  return historyData;
-}
-function analysisHistory(data) {
-  var item = data.split(',');
-  var stockitem = {};
-  stockitem['date'] = Number(item[0]);
-  stockitem['open'] = Number(item[1]);
-  stockitem['high'] = Number(item[2]);
-  stockitem['low'] = Number(item[3]);
-  stockitem['close'] = Number(item[4]);
-  stockitem['volume'] = Number(item[5]);
-  stockitem['amount'] = Number(item[6]);
-  return stockitem
+    var stocktmp =  JSON.parse(data.substring(data.indexOf('({')+1,data.lastIndexOf('})')+1));
+    stock['label'] = stocktmp.name;
+    stock['code'] = code;
+    stock['firstYear'] = _.first(_.keys(stocktmp.year));
+    stock['lastYear'] = _.last(_.keys(stocktmp.year));
+    return stock;
+  } else {
+    return false;
+  }
 }
